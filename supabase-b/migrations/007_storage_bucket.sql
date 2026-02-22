@@ -1,0 +1,7 @@
+-- NEXUSPAGAMENTOS - Supabase B
+-- Migration 007: Storage bucket para comprovantes
+--
+-- Crie o bucket "receipts" manualmente no Supabase B:
+-- Dashboard > Storage > New bucket
+-- Nome: receipts
+-- Public: false (private)
