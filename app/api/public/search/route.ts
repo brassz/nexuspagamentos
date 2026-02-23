@@ -22,10 +22,11 @@ async function searchInCity(
 
   if (isCpf) {
     const cpfNorm = normalizeCPF(trimmed);
+    const cpfFormatted = cpfNorm.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
     const { data, error } = await supabase
       .from('clients')
       .select('id, name, cpf, email, phone')
-      .or(`cpf.eq.${cpfNorm},cpf.eq.${trimmed}`);
+      .in('cpf', [cpfNorm, cpfFormatted]);
     if (error || !data?.length) return { clients: [], loans: [] };
     clients = data;
   } else {
@@ -53,7 +54,13 @@ async function searchInCity(
 
 export async function POST(req: NextRequest) {
   try {
-    const { query, city } = await req.json();
+    let body: { query?: string; city?: string };
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Requisição inválida' }, { status: 400 });
+    }
+    const { query, city } = body;
     if (!query || typeof query !== 'string') {
       return NextResponse.json({ error: 'query obrigatória' }, { status: 400 });
     }
@@ -84,7 +91,9 @@ export async function POST(req: NextRequest) {
     const { clients, loans } = await searchInCity(city as Exclude<CityKey, 'outro'>, trimmed, isCpf);
     return NextResponse.json({ clients, loans });
   } catch (e) {
-    console.error(e);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    const err = e instanceof Error ? e : new Error(String(e));
+    console.error('Search error:', err.message, err.stack);
+    const msg = process.env.NODE_ENV === 'development' ? err.message : 'Erro ao buscar. Tente novamente.';
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
